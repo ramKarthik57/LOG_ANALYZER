@@ -18,16 +18,6 @@
 
 A comprehensive Forensic Intelligence Platform designed for Security Operations Centers (SOC) to analyze authentication logs, detect anomalies, and provide actionable threat intelligence through advanced AI/ML techniques.
 
-## Demo
-
-### Screenshots
-![SENTINEL Dashboard](screenshots/dashboard.png)
-![Attack Chain Analysis](screenshots/attack_chain.png)
-![Risk Scoring](screenshots/risk_scoring.png)
-
-### Demo Video
-🎥 [Watch the full demo on YouTube](https://youtube.com/watch?v=demo-link) - See SENTINEL in action analyzing logs and detecting threats in real-time.
-
 ## Features
 
 - **Real-time Log Analysis**: Parse and analyze authentication logs (e.g., auth.log) for security events
