@@ -1,5 +1,10 @@
 # SENTINEL — Self-Evolving Neural Threat Intelligence Engine
 
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/ramKarthik57/LOG_ANALYZER.svg)](https://github.com/ramKarthik57/LOG_ANALYZER/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/ramKarthik57/LOG_ANALYZER.svg)](https://github.com/ramKarthik57/LOG_ANALYZER/issues)
+
 A comprehensive Forensic Intelligence Platform designed for Security Operations Centers (SOC) to analyze authentication logs, detect anomalies, and provide actionable threat intelligence through advanced AI/ML techniques.
 
 ## Features
@@ -25,7 +30,7 @@ A comprehensive Forensic Intelligence Platform designed for Security Operations 
 
 1. Clone or download the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ramKarthik57/LOG_ANALYZER.git
    cd LOG_ANALYZER
    ```
 
@@ -153,7 +158,7 @@ python test_sentinel.py
 
 ## License
 
-[Specify your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Disclaimer
 
