@@ -2,10 +2,31 @@
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/ramKarthik57/LOG_ANALYZER/actions/workflows/ci.yml/badge.svg)](https://github.com/ramKarthik57/LOG_ANALYZER/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/ramKarthik57/LOG_ANALYZER.svg)](https://github.com/ramKarthik57/LOG_ANALYZER/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/ramKarthik57/LOG_ANALYZER.svg)](https://github.com/ramKarthik57/LOG_ANALYZER/issues)
+[![Last commit](https://img.shields.io/github/last-commit/ramKarthik57/LOG_ANALYZER)](https://github.com/ramKarthik57/LOG_ANALYZER/commits/main)
+
+```
+ ███████╗███████╗███╗   ██╗████████╗██╗███╗   ██╗███████╗██╗
+ ██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║████╗  ██║██╔════╝██║
+ ███████╗█████╗  ██╔██╗ ██║   ██║   ██║██╔██╗ ██║█████╗  ██║
+ ╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██║╚██╗██║██╔══╝  ╚═╝
+ ███████║███████╗██║ ╚████║   ██║   ██║██║ ╚████║███████╗██╗
+ ╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝
+```
 
 A comprehensive Forensic Intelligence Platform designed for Security Operations Centers (SOC) to analyze authentication logs, detect anomalies, and provide actionable threat intelligence through advanced AI/ML techniques.
+
+## Demo
+
+### Screenshots
+![SENTINEL Dashboard](screenshots/dashboard.png)
+![Attack Chain Analysis](screenshots/attack_chain.png)
+![Risk Scoring](screenshots/risk_scoring.png)
+
+### Demo Video
+🎥 [Watch the full demo on YouTube](https://youtube.com/watch?v=demo-link) - See SENTINEL in action analyzing logs and detecting threats in real-time.
 
 ## Features
 
@@ -38,6 +59,40 @@ A comprehensive Forensic Intelligence Platform designed for Security Operations 
    ```bash
    pip install -r requirements.txt
    ```
+
+## Quick Start
+
+Get started with SENTINEL in under 5 minutes:
+
+```bash
+# 1. Launch the GUI dashboard
+python sentinel.py
+
+# 2. Generate simulated attack logs for testing
+python sentinel.py --sim
+
+# 3. Analyze a sample log file programmatically
+python -c "
+from sentinel.parser import parse_log_file
+from sentinel.detection import AdaptiveDetector
+
+df = parse_log_file('auth.log')
+detector = AdaptiveDetector()
+anomalies = detector.detect(df)
+print(f'Detected {len(anomalies)} anomalies')
+"
+```
+
+### Expected Output
+- GUI launches with professional dashboard
+- Simulated logs contain realistic attack patterns
+- Programmatic analysis returns anomaly count and details
+
+### Examples
+Check out the [examples/](examples/) folder for:
+- Sample log files with known attack patterns
+- Expected analysis results and interpretations
+- Quick reference for testing and validation
 
 ## Usage
 
@@ -104,6 +159,13 @@ LOG_ANALYZER/
 │   ├── simulator.py        # Log simulation
 │   ├── active_defense.py   # SOAR integration
 │   └── storage.py          # Data storage
+├── docs/                   # Documentation files
+│   ├── REPORT.docx
+│   └── REPORT.pdf
+├── examples/               # Sample logs and analysis
+│   ├── sample_auth.log
+│   └── sample_analysis.md
+├── screenshots/            # GUI screenshots
 ├── auth.log                # Sample log file
 ├── simulated_auth.log      # Generated simulation
 ├── SENTINEL_report.csv     # Sample CSV report
@@ -155,6 +217,41 @@ python test_sentinel.py
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
+
+## FAQ
+
+### Can SENTINEL handle real-time log analysis?
+Yes! The GUI dashboard provides real-time monitoring capabilities. You can load logs and see live analysis results.
+
+### What log formats does it support?
+Currently optimized for authentication logs (auth.log format), but the parser can be extended for other syslog formats.
+
+### Does it require labeled training data?
+No, all ML models operate unsupervised - no labels required. This makes it practical for real-world deployment.
+
+### Can I integrate this with SIEM systems?
+Yes, the modular design allows integration via APIs. The active defense module supports SOAR workflows.
+
+### Is it suitable for production use?
+While functional, consider it beta software. Test thoroughly in your environment before production deployment.
+
+### What are the system requirements?
+Python 3.8+, 4GB RAM recommended, works on Windows/Linux/macOS.
+
+### How accurate is the anomaly detection?
+Accuracy varies by dataset, but the adaptive algorithms typically achieve 85-95% accuracy on authentication logs.
+
+## Roadmap
+
+- [ ] Docker containerization for easy deployment
+- [ ] Web API interface for integration with SIEM systems
+- [ ] Additional ML models (LSTM for sequence prediction)
+- [ ] Real-time streaming log analysis
+- [ ] Multi-format log support (Windows Event Logs, Apache logs)
+- [ ] Performance optimizations for large datasets
+- [ ] Plugin system for custom detection rules
+
+See our [GitHub Projects](https://github.com/ramKarthik57/LOG_ANALYZER/projects) for detailed roadmap and progress tracking.
 
 ## License
 

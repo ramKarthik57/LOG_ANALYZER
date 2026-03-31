@@ -50,8 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Docker containerization
-- Web API interface
-- Additional ML models
-- Performance optimizations
-- Extended log format support
+- Docker containerization for easy deployment
+- Web API interface for SIEM integration
+- Additional ML models (LSTM for sequence prediction)
+- Real-time streaming log analysis
+- Multi-format log support (Windows Event Logs, Apache logs)
+- Performance optimizations for large datasets
+- Plugin system for custom detection rules
+- Advanced reporting with PDF generation
+- Integration with threat intelligence feeds
+- Automated alerting and notification system
