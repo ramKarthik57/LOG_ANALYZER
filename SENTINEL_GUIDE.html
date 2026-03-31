@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL — The Ultimate Forensic Master Guide (COMPLETE)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --accent: #0071e3;
+            --accent-soft: rgba(0, 113, 227, 0.05);
+            --border: #f0f0f0;
+            --sidebar-bg: #fbfbfd;
+            --card-bg: #ffffff;
+            --success: #34c759;
+            --warning: #ff9500;
+            --error: #ff3b30;
+            --shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        [data-theme="dark"] {
+            --bg: #000000;
+            --text-primary: #f5f5f7;
+            --text-secondary: #86868b;
+            --accent: #2997ff;
+            --accent-soft: rgba(41, 151, 255, 0.1);
+            --border: #1d1d1f;
+            --sidebar-bg: #161617;
+            --card-bg: #1d1d1f;
+            --shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        html { scroll-behavior: smooth; }
+        body { background-color: var(--bg); color: var(--text-primary); font-family: 'Plus Jakarta Sans', sans-serif; display: flex; min-height: 100vh; }
+
+        /* --- Global Layout --- */
+        nav {
+            width: 320px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            padding: 40px 24px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        main {
+            flex: 1;
+            padding: 80px 8%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* --- Navigation --- */
+        .nav-header { font-weight: 700; font-size: 1.2rem; letter-spacing: -0.5px; margin-bottom: 32px; color: var(--text-primary); }
+        .nav-group { margin-bottom: 32px; }
+        .nav-group-title { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; font-weight: 700; }
+        
+        .nav-item {
+            display: block;
+            padding: 10px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover, .nav-item.active { color: var(--accent); background: var(--accent-soft); }
+
+        /* --- Components --- */
+        section { margin-bottom: 140px; scroll-margin-top: 80px; }
+        .hero { padding: 100px 0; text-align: left; }
+        .badge { display: inline-block; padding: 6px 14px; background: var(--accent-soft); color: var(--accent); border-radius: 100px; font-size: 0.8rem; font-weight: 600; margin-bottom: 24px; }
+        
+        h1 { font-size: 4.5rem; font-weight: 800; letter-spacing: -2px; line-height: 1.1; margin-bottom: 24px; }
+        h2 { font-size: 2.8rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+        h3 { font-size: 1.8rem; font-weight: 700; margin: 48px 0 24px; color: var(--accent); }
+        p { font-size: 1.2rem; line-height: 1.8; color: var(--text-secondary); margin-bottom: 24px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 32px; margin: 48px 0; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); padding: 40px; border-radius: 24px; box-shadow: var(--shadow); transition: transform 0.3s ease; }
+        .card:hover { transform: translateY(-8px); }
+
+        /* Diagrams & Tech */
+        .diag-container { background: var(--sidebar-bg); border: 1px solid var(--border); padding: 60px; border-radius: 24px; margin: 48px 0; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+        .node { padding: 18px 36px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; font-weight: 600; color: var(--accent); box-shadow: var(--shadow); }
+        .arrow { width: 2px; height: 32px; background: var(--border); position: relative; }
+        .arrow::after { content: ''; position: absolute; bottom: 0; left: -4px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--border); }
+
+        pre { background: var(--sidebar-bg); border: 1px solid var(--border); padding: 24px; border-radius: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; overflow-x: auto; margin: 24px 0; color: var(--text-primary); }
+        .math-block { background: var(--sidebar-bg); border: 1px solid var(--border); padding: 32px; border-radius: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; margin: 32px 0; border-left: 6px solid var(--accent); color: var(--text-primary); }
+        
+        .callout { padding: 32px; border-radius: 20px; margin: 40px 0; border-left: 6px solid var(--accent); background: var(--accent-soft); }
+        .callout-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 12px; color: var(--accent); }
+
+        .timeline { border-left: 2px solid var(--border); padding-left: 32px; position: relative; margin: 48px 0; }
+        .timeline-item { margin-bottom: 48px; position: relative; }
+        .timeline-item::before { content: ''; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; position: absolute; left: -40px; top: 10px; border: 3px solid var(--bg); }
+
+        footer { text-align: center; padding: 100px 0; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-secondary); }
+
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-header">SENTINEL Master Guide</div>
+        
+        <div class="nav-group">
+            <div class="nav-group-title">01. Foundations</div>
+            <a href="#hero" class="nav-item">Introduction</a>
+            <a href="#problems" class="nav-item">The Problem Space</a>
+            <a href="#solution" class="nav-item">The SENTINEL Solution</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-title">02. Architecture</div>
+            <a href="#overview" class="nav-item">System Architecture</a>
+            <a href="#pipeline" class="nav-item">The 7-Phase Pipeline</a>
+            <a href="#p1-p3" class="nav-item">Phases 1-3 Deep Dive</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-title">03. AI & Analysis</div>
+            <a href="#ai-core" class="nav-item">The AI Engine</a>
+            <a href="#isolation" class="nav-item">Isolation Forest Logic</a>
+            <a href="#clustering" class="nav-item">DBSCAN Campaigns</a>
+            <a href="#hmm" class="nav-item">Behavioral States (HMM)</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-title">04. Decision & Forensics</div>
+            <a href="#scoring" class="nav-item">Risk Scoring Math</a>
+            <a href="#recon" class="nav-item">Attack Chain Recon</a>
+            <a href="#tamper" class="nav-item">Tamper Detection</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-title">05. Operations</div>
+            <a href="#soar" class="nav-item">SOAR Active Defense</a>
+            <a href="#dashboard" class="nav-item">UX & SOC Dashboard</a>
+            <a href="#index" class="nav-item">Master Tech Index</a>
+        </div>
+    </nav>
+
+    <main>
+        
+        <!-- SECTION 1: FOUNDATION -->
+        <section id="hero" class="hero">
+            <div class="badge">Forensic Intelligence Complete Manual</div>
+            <h1>The Sentinel<br>Encyclopedia</h1>
+            <p>The definitive master-level guide to the SENTINEL Forensic Platform — an end-to-end journey from raw data to autonomous cyber-defense.</p>
+        </section>
+
+        <section id="problems">
+            <h2>01. The Problem Space</h2>
+            <p>In the modern cybersecurity landscape, organizations face an overwhelming deluge of log data. Traditional security monitoring faces three critical failures:</p>
+            <div class="grid">
+                <div class="card">
+                    <h3>Signal-to-Noise Failure</h3>
+                    <p>Security analysts are blinded by volume. Out of 10 million events, only 10 might be malicious. Finding them is the classic "needle in a haystack" problem.</p>
+                </div>
+                <div class="card">
+                    <h3>Reactive Blocking</h3>
+                    <p>Most firewalls only block known patterns. Sophisticated attackers use unique strategies that bypass static rules, allowing them to hide in plain sight.</p>
+                </div>
+                <div class="card">
+                    <h3>Contextual Blindness</h3>
+                    <p>Without knowing the IP's origin, the user's history, and the behavioral deviation, a failed login cannot be accurately judged.</p>
+                </div>
+            </div>
+            <div class="callout">
+                <div class="callout-title">The Reality of Analyst Fatigue</div>
+                <p>SOC analysts spend over 4 hours a day filtering False Positives. SENTINEL is engineered to automate this triage, returning time to the defenders.</p>
+            </div>
+        </section>
+
+        <section id="solution">
+            <h2>02. The SENTINEL Solution</h2>
+            <p>SENTINEL acts as an <strong>Automated Forensic Engine</strong>. It replaces manual investigation with a 7-phase analytical pipeline that works at machine speed.</p>
+            <h3>Value Propositions</h3>
+            <ul>
+                <li><strong>AI-Driven Detection:</strong> Uses Unsupervised ML to find "Unknown Unknowns."</li>
+                <li><strong>Global Enrichment:</strong> Adds GeoIP and MITRE ATT&CK intelligence.</li>
+                <li><strong>Zero-False-Positive Deception:</strong> Catch hackers with 100% certainty using Honey-Tokens.</li>
+            </ul>
+        </section>
+
+        <!-- SECTION 2: ARCHITECTURE -->
+        <section id="overview">
+            <h2>03. System Architecture</h2>
+            <p>SENTINEL is modular and scalable, with every component sharing a unified <strong>SQLite Forensic Storage</strong> schema.</p>
+            <div class="diag-container">
+                <div class="node">Raw Log Source</div>
+                <div class="arrow"></div>
+                <div class="node">Phase 1: Multi-Format Parser</div>
+                <div class="arrow"></div>
+                <div class="node">Phase 2: Forensic Enrichment</div>
+                <div class="arrow"></div>
+                <div class="node">Phase 3: Adaptive Calibration</div>
+                <div class="arrow"></div>
+                <div style="display: flex; gap: 40px;">
+                    <div class="node">AI Engine</div>
+                    <div class="node">Heuristic Core</div>
+                </div>
+                <div class="arrow"></div>
+                <div class="node">Phase 5: Multi-Factor Scorer</div>
+                <div class="arrow"></div>
+                <div class="node">Phase 6: Forensic Visualizer (GUI)</div>
+            </div>
+        </section>
+
+        <section id="pipeline">
+            <h2>04. The 7-Phase Analytical Pipeline</h2>
+            <div id="p1-p3">
+                <h3>Phase 1: Normalization (parser.py)</h3>
+                <p>Translates messy, unstructured logs (Ubuntu, RedHat, etc.) into a clean, searchable format.</p>
+                <div class="pro-tip">Think of it as a universal translator for computer logs.</div>
+                
+                <h3>Phase 2: Enrichment (enrichment.py)</h3>
+                <p>Adds layers of intelligence: GeoIP (Origin), IP Reputation (History), and MITRE Mapping (Strategy).</p>
+                
+                <h3>Phase 3: Adaptive Calibration (detection.py)</h3>
+                <p>Instead of static rules, SENTINEL learns what "Normal" is for <em>your</em> server using standard deviation math.</p>
+            </div>
+        </section>
+
+        <!-- SECTION 3: AI -->
+        <section id="ai-core">
+            <h2>05. The AI Analytical Engine</h2>
+            <p>Phase 4 uses Unsupervised Machine Learning to identify deviations from the baseline without needing a blacklist.</p>
+            
+            <div id="isolation">
+                <h3>Isolation Forest (Anomaly Hunter)</h3>
+                <div class="math-block">Anomaly Score = 2 ^ (-E[h(x)] / c(n))</div>
+                <p>Anomalies are "few and different." The model isolates "strange" logins instantly while common logins stay buried deep in the forest.</p>
+            </div>
+
+            <div id="clustering">
+                <h3>DBSCAN (Campaign Discovery)</h3>
+                <p>Groups coordinated IP attacks into a single "Campaign Alert," identifying botnets acting in unison.</p>
+            </div>
+
+            <div id="hmm">
+                <h3>HMM (User Behavioral States)</h3>
+                <p>Models transitions from [Normal] to [Highly-Risk] behaviors. If a sequence is too improbable for a human, it flags an account takeover.</p>
+            </div>
+        </section>
+
+        <!-- SECTION 4: FORENSICS -->
+        <section id="scoring">
+            <h2>06. Scoring & Decision Logic</h2>
+            <p>Risk is quantified using a multi-factor weighting model.</p>
+            <div class="math-block">Score = (Factor_Fail * 5) + (Factor_AI * 15) + (Factor_Spray * 20)</div>
+            <p>This ensures that only verified, high-confidence threats trigger a defensive action.</p>
+        </section>
+
+        <section id="recon">
+            <h2>07. Forensic Reconstruction</h2>
+            <p>SENTINEL builds <strong>DAG Kill Chains</strong> to visualize the attacker's journey.</p>
+            <div class="timeline">
+                <div class="timeline-item"><strong>1. Recon</strong>: Finding usernames and service versions.</div>
+                <div class="timeline-item"><strong>2. Initial Access</strong>: The successful breach event.</div>
+                <div class="timeline-item"><strong>3. Persistence</strong>: Attempting to stay in the system (Night logins).</div>
+                <div class="timeline-item"><strong>4. Privilege Escalation</strong>: Trying to gain root/admin control.</div>
+            </div>
+        </section>
+
+        <section id="tamper">
+            <h2>08. Tamper Detection (Entropy)</h2>
+            <p>If an attacker deletes logs, it disturbs the natural timeline "jitter." SENTINEL uses <strong>Shannon Entropy</strong> to detect these mathematical "scars," flagging log tampering even if the evidence was deleted.</p>
+        </section>
+
+        <!-- SECTION 5: OPERATIONS -->
+        <section id="soar">
+            <h2>09. Active Defense (SOAR)</h2>
+            <p>The SOAR engine (active_defense.py) executes autonomous responses:</p>
+            <ul>
+                <li><strong>BLOCK_IP</strong>: Kicking the attacker out at the firewall level.</li>
+                <li><strong>LOCK_ACCOUNT</strong>: Suspending compromised users instantly.</li>
+            </ul>
+        </section>
+
+        <section id="dashboard">
+            <h2>10. The SOC Dashboard</h2>
+            <p>Designed for low eye-strain and high data visibility. It features ASCII log blocks, MITRE heatmaps, and educational tooltips to help junior analysts learn as they work.</p>
+        </section>
+
+        <section id="index">
+            <h2>11. Master Technical Index</h2>
+            <div class="grid">
+                <div class="card"><strong>sentinel.py</strong> Dashboard Entry Point</div>
+                <div class="card"><strong>ai_engine.py</strong> ML Model Core</div>
+                <div class="card"><strong>forensics.py</strong> DAG & Entropy Engine</div>
+                <div class="card"><strong>scoring.py</strong> Risk Decision Engine</div>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 SENTINEL Platform Architecture. All Rights Reserved.</p>
+            <p>Generated by Forensic AI for the Next Generation of Defenders.</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // Smooth scroll spy implementation
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section');
+            const navItems = document.querySelectorAll('.nav-item');
+            let current = "";
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 150) { current = section.getAttribute('id'); }
+            });
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('href') === '#' + current) { item.classList.add('active'); }
+            });
+        });
+    </script>
+</body>
+</html>
