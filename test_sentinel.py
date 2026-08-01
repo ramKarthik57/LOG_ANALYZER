@@ -1,4 +1,9 @@
-"""SENTINEL — End-to-End Pipeline Test"""
+"""
+SENTINEL — End-to-End Pipeline Unit Tests
+"""
+import pytest
+import os
+import pandas as pd
 from sentinel.simulator import generate_full_simulation
 from sentinel.parser import parse_log_file
 from sentinel.enrichment import enrich_dataframe
@@ -9,78 +14,131 @@ from sentinel.forensics import (build_all_attack_chains, detect_log_tampering,
 from sentinel.scoring import RiskScoringEngine
 from sentinel.report import generate_html_report, generate_csv_report
 
-print("=== SENTINEL END-TO-END PIPELINE TEST ===")
 
-# Phase 1: Simulate
-path = generate_full_simulation()
-print(f"[1/7] Simulated log: {path}")
+@pytest.fixture(scope="module")
+def pipeline_data():
+    """Fixture to run the simulation, parsing, and enrichment steps once for tests."""
+    # Phase 1: Simulate
+    path = generate_full_simulation()
+    assert os.path.exists(path), f"Simulated log file {path} was not created."
+    
+    # Phase 2: Parse
+    df = parse_log_file(path)
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty, "Parsed DataFrame is empty."
+    
+    # Phase 3: Enrich
+    df_enriched = enrich_dataframe(df)
+    assert "Geo_Country" in df_enriched.columns, "Enrichment failed to add Geo_Country."
+    
+    return {
+        "df": df_enriched,
+        "path": path
+    }
 
-# Phase 2: Parse
-df = parse_log_file(path)
-ev_counts = df.Event.value_counts().to_dict()
-print(f"[2/7] Parsed: {len(df)} events")
-for ev, cnt in ev_counts.items():
-    print(f"       {ev}: {cnt}")
 
-# Phase 3: Enrich
-df = enrich_dataframe(df)
-print(f"[3/7] Enriched: {len(df.columns)} columns")
-print(f"       Countries: {df.Geo_Country.unique().tolist()}")
+def test_detection(pipeline_data):
+    """Test Phase 4: Threat Detection"""
+    df = pipeline_data["df"]
+    det = AdaptiveDetector()
+    
+    bf = det.detect_bruteforce(df)
+    night = det.detect_night_logins(df)
+    comp = det.detect_compromise_pattern(df)
+    stuff = det.detect_credential_stuffing(df)
+    
+    assert bf is not None
+    assert night is not None
+    assert comp is not None
+    assert stuff is not None
+    assert det.get_adaptive_threshold(df) >= 0
 
-# Phase 4: Detect
-det = AdaptiveDetector()
-bf = det.detect_bruteforce(df)
-night = det.detect_night_logins(df)
-comp = det.detect_compromise_pattern(df)
-stuff = det.detect_credential_stuffing(df)
-n_bf = len(bf[bf.Is_Bruteforce]) if "Is_Bruteforce" in bf.columns else 0
-n_stuff = len(stuff[stuff.Is_Stuffing]) if "Is_Stuffing" in stuff.columns else 0
-print(f"[4/7] Detection: bruteforce={n_bf}, night={len(night)}, compromise={len(comp)}, stuffing={n_stuff}")
-print(f"       Adaptive threshold: {det.get_adaptive_threshold(df):.1f}")
 
-# Phase 5: AI Engine
-ai = AIEngine()
-results = ai.run_full_analysis(df)
-anom = results["anomaly"]
-clusters = results["clusters"]
-profiles = results["user_profiles"]
-n_anom = len(anom[anom.is_anomaly]) if "is_anomaly" in anom.columns else 0
-camp_ids = clusters.campaign_cluster[clusters.campaign_cluster >= 0] if "campaign_cluster" in clusters.columns else []
-n_camps = len(set(camp_ids))
-print(f"[5/7] AI Engine: anomalies={n_anom}, campaigns={n_camps}, profiled_users={len(profiles)}")
-for user, p in list(profiles.items())[:3]:
-    print(f"       User '{user}': state={p['current_state']}, risk={p['risk']:.3f}")
+def test_ai_engine(pipeline_data):
+    """Test Phase 5: AI Engine analysis, clustering, and profiling"""
+    df = pipeline_data["df"]
+    ai = AIEngine()
+    results = ai.run_full_analysis(df)
+    
+    assert "anomaly" in results
+    assert "clusters" in results
+    assert "user_profiles" in results
+    
+    anom = results["anomaly"]
+    assert isinstance(anom, pd.DataFrame)
+    assert "is_anomaly" in anom.columns
 
-# Phase 6: Scoring
-scorer = RiskScoringEngine()
-scores = scorer.score_all_ips(df, anom)
-levels = {}
-for ip, d in scores.items():
-    levels[d["level"]] = levels.get(d["level"], 0) + 1
-print(f"[6/7] Risk Scoring: {levels}")
-top_ip, top_data = sorted(scores.items(), key=lambda x: x[1]["score"], reverse=True)[0]
-print(f"       Top threat: {top_ip} -> score={top_data['score']}, level={top_data['level']}")
 
-# Phase 7: Forensics
-sev_map = {ip: d["level"] for ip, d in scores.items()}
-chains = build_all_attack_chains(df, sev_map)
-tamper = detect_log_tampering(df)
-df = link_sessions(df)
-insiders = detect_insider_threats(df, profiles)
-print(f"[7/7] Forensics: attack_chains={len(chains)}, tampered={tamper['tampered']}, insider_threats={len(insiders)}")
-for ch in chains[:2]:
-    print(f"       Chain IP={ch['ip']}: {' -> '.join(ch['phases_reached'])} ({ch['kill_chain_progress']*100:.0f}%)")
+def test_scoring_and_forensics(pipeline_data):
+    """Test Phase 6 & 7: Risk Scoring and Forensics analysis"""
+    df = pipeline_data["df"]
+    ai = AIEngine()
+    results = ai.run_full_analysis(df)
+    anom = results["anomaly"]
+    profiles = results["user_profiles"]
+    
+    # Scoring
+    scorer = RiskScoringEngine()
+    scores = scorer.score_all_ips(df, anom)
+    assert isinstance(scores, dict)
+    
+    # Forensics
+    sev_map = {ip: d["level"] for ip, d in scores.items()}
+    chains = build_all_attack_chains(df, sev_map)
+    tamper = detect_log_tampering(df)
+    df_linked = link_sessions(df)
+    insiders = detect_insider_threats(df_linked, profiles)
+    
+    assert isinstance(chains, list)
+    assert "tampered" in tamper
+    assert "Session_ID" in df_linked.columns
+    assert isinstance(insiders, list)
 
-# Reports
-html = generate_html_report(df, scores, bf, night, comp, tamper, chains, profiles, insiders, results, path)
-csv_path = generate_csv_report(df, scores, path)
 
-print("")
-print("=" * 50)
-print("ALL 7 PHASES PASSED SUCCESSFULLY")
-print(f"HTML Report: {html}")
-print(f"CSV Report:  {csv_path}")
-print(f"Total Events: {len(df)}")
-print(f"Unique IPs:   {df.IP_Address.nunique()}")
-print(f"Sessions:     {df.Session_ID.nunique()}")
-print("=" * 50)
+def test_report_generation(pipeline_data, tmp_path):
+    """Test Phase 8: HTML and CSV Report Generation"""
+    df = pipeline_data["df"]
+    path = pipeline_data["path"]
+    
+    # Detect & Analysis mock results for report
+    det = AdaptiveDetector()
+    bf = det.detect_bruteforce(df)
+    night = det.detect_night_logins(df)
+    comp = det.detect_compromise_pattern(df)
+    
+    ai = AIEngine()
+    results = ai.run_full_analysis(df)
+    anom = results["anomaly"]
+    profiles = results["user_profiles"]
+    
+    scorer = RiskScoringEngine()
+    scores = scorer.score_all_ips(df, anom)
+    
+    sev_map = {ip: d["level"] for ip, d in scores.items()}
+    chains = build_all_attack_chains(df, sev_map)
+    tamper = detect_log_tampering(df)
+    
+    df_linked = link_sessions(df)
+    insiders = detect_insider_threats(df_linked, profiles)
+    
+    # Use temporary directory for reports in tests to avoid cluttering workspace
+    temp_html_report = os.path.join(tmp_path, "test_report.html")
+    temp_csv_report = os.path.join(tmp_path, "test_report.csv")
+    
+    html = generate_html_report(df_linked, scores, bf, night, comp, tamper, chains, profiles, insiders, results, path)
+    csv_path = generate_csv_report(df_linked, scores, path)
+    
+    assert os.path.exists(html)
+    assert os.path.exists(csv_path)
+    
+    # Clean up generated files if they are in the root directory
+    if os.path.exists(html) and os.path.dirname(html) == os.getcwd():
+        try:
+            os.remove(html)
+        except Exception:
+            pass
+    if os.path.exists(csv_path) and os.path.dirname(csv_path) == os.getcwd():
+        try:
+            os.remove(csv_path)
+        except Exception:
+            pass
