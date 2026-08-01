@@ -7,6 +7,7 @@ demo works without any API keys.
 """
 
 import hashlib
+
 import pandas as pd
 
 # ─────────────────────────────────────────────────────────────
@@ -14,29 +15,39 @@ import pandas as pd
 # In production, replace with MaxMind GeoLite2 reader.
 # ─────────────────────────────────────────────────────────────
 _GEO_LOCATIONS = [
-    ("United States", "New York",      40.71,  -74.01),
-    ("Russia",        "Moscow",        55.75,   37.62),
-    ("China",         "Beijing",       39.90,  116.40),
-    ("Germany",       "Berlin",        52.52,   13.40),
-    ("Brazil",        "São Paulo",    -23.55,  -46.63),
-    ("India",         "Mumbai",        19.08,   72.88),
-    ("Nigeria",       "Lagos",          6.52,    3.38),
-    ("Iran",          "Tehran",        35.69,   51.39),
-    ("North Korea",   "Pyongyang",     39.02,  125.75),
-    ("Ukraine",       "Kyiv",          50.45,   30.52),
-    ("Japan",         "Tokyo",         35.68,  139.69),
-    ("South Korea",   "Seoul",         37.57,  126.98),
-    ("United Kingdom","London",        51.51,   -0.13),
-    ("France",        "Paris",         48.86,    2.35),
-    ("Netherlands",   "Amsterdam",     52.37,    4.90),
+    ("United States", "New York", 40.71, -74.01),
+    ("Russia", "Moscow", 55.75, 37.62),
+    ("China", "Beijing", 39.90, 116.40),
+    ("Germany", "Berlin", 52.52, 13.40),
+    ("Brazil", "São Paulo", -23.55, -46.63),
+    ("India", "Mumbai", 19.08, 72.88),
+    ("Nigeria", "Lagos", 6.52, 3.38),
+    ("Iran", "Tehran", 35.69, 51.39),
+    ("North Korea", "Pyongyang", 39.02, 125.75),
+    ("Ukraine", "Kyiv", 50.45, 30.52),
+    ("Japan", "Tokyo", 35.68, 139.69),
+    ("South Korea", "Seoul", 37.57, 126.98),
+    ("United Kingdom", "London", 51.51, -0.13),
+    ("France", "Paris", 48.86, 2.35),
+    ("Netherlands", "Amsterdam", 52.37, 4.90),
 ]
 
 # Country-level cyber threat risk index (0=safe, 1=highest risk)
 _COUNTRY_RISK = {
-    "Russia": 0.90, "China": 0.85, "North Korea": 0.95, "Iran": 0.88,
-    "Nigeria": 0.70, "Brazil": 0.50, "Ukraine": 0.65, "India": 0.35,
-    "United States": 0.25, "Germany": 0.15, "Japan": 0.10,
-    "United Kingdom": 0.12, "France": 0.14, "Netherlands": 0.20,
+    "Russia": 0.90,
+    "China": 0.85,
+    "North Korea": 0.95,
+    "Iran": 0.88,
+    "Nigeria": 0.70,
+    "Brazil": 0.50,
+    "Ukraine": 0.65,
+    "India": 0.35,
+    "United States": 0.25,
+    "Germany": 0.15,
+    "Japan": 0.10,
+    "United Kingdom": 0.12,
+    "France": 0.14,
+    "Netherlands": 0.20,
     "South Korea": 0.15,
 }
 
@@ -51,15 +62,14 @@ def resolve_geoip(ip: str) -> dict:
     """Resolve IP to geo-location (simulated). Returns dict with geo fields."""
     if ip == "Internal" or ip.startswith("127.") or ip.startswith("10."):
         return {
-            "geo_country": "Local",  "geo_city": "Internal",
-            "geo_lat": 0.0, "geo_lon": 0.0
+            "geo_country": "Local",
+            "geo_city": "Internal",
+            "geo_lat": 0.0,
+            "geo_lon": 0.0,
         }
     idx = _ip_hash_index(ip)
     country, city, lat, lon = _GEO_LOCATIONS[idx]
-    return {
-        "geo_country": country, "geo_city": city,
-        "geo_lat": lat, "geo_lon": lon
-    }
+    return {"geo_country": country, "geo_city": city, "geo_lat": lat, "geo_lon": lon}
 
 
 def get_country_risk(country: str) -> float:
@@ -71,8 +81,9 @@ def get_country_risk(country: str) -> float:
 # IP REPUTATION  (deterministic from IP hash)
 # In production, query AbuseIPDB / OTX AlienVault.
 # ─────────────────────────────────────────────────────────────
-def compute_ip_reputation(ip: str, failed_count: int = 0,
-                          geo_country: str = "") -> float:
+def compute_ip_reputation(
+    ip: str, failed_count: int = 0, geo_country: str = ""
+) -> float:
     """
     Compute reputation score for an IP.  0.0 = malicious, 1.0 = clean.
     Factors: base hash, failed attempt penalty, country risk.
@@ -215,13 +226,13 @@ def enrich_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         geo_risks.append(get_country_risk(geo["geo_country"]))
 
     df["Geo_Country"] = [g["geo_country"] for g in geo_data]
-    df["Geo_City"]    = [g["geo_city"]    for g in geo_data]
-    df["Geo_Lat"]     = [g["geo_lat"]     for g in geo_data]
-    df["Geo_Lon"]     = [g["geo_lon"]     for g in geo_data]
+    df["Geo_City"] = [g["geo_city"] for g in geo_data]
+    df["Geo_Lat"] = [g["geo_lat"] for g in geo_data]
+    df["Geo_Lon"] = [g["geo_lon"] for g in geo_data]
     df["IP_Reputation"] = reputations
-    df["ASN"]         = asns
+    df["ASN"] = asns
     df["MITRE_Technique"] = mitre_techniques
-    df["MITRE_Tactic"]    = mitre_tactics
-    df["Geo_Risk"]    = geo_risks
+    df["MITRE_Tactic"] = mitre_tactics
+    df["Geo_Risk"] = geo_risks
 
     return df

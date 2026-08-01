@@ -5,11 +5,11 @@ Persistent event storage with temporal indexing
 for efficient window queries and full-text search.
 """
 
-import sqlite3
-import pandas as pd
 import os
+import sqlite3
 from datetime import datetime
 
+import pandas as pd
 
 DB_SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -84,23 +84,26 @@ class SentinelDB:
         cursor = self.conn.cursor()
         count = 0
         for _, row in df.iterrows():
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO events (
                     line_number, timestamp_str, parsed_time, event_type,
                     ip_address, username, process, host, message, raw_line
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                row.get("Line_Number", 0),
-                row.get("Timestamp", ""),
-                str(row.get("Parsed_Time", "")),
-                row.get("Event", "OTHER"),
-                row.get("IP_Address", "Internal"),
-                row.get("Username", "unknown"),
-                row.get("Process", ""),
-                row.get("Host", ""),
-                row.get("Message", ""),
-                row.get("Raw_Line", ""),
-            ))
+            """,
+                (
+                    row.get("Line_Number", 0),
+                    row.get("Timestamp", ""),
+                    str(row.get("Parsed_Time", "")),
+                    row.get("Event", "OTHER"),
+                    row.get("IP_Address", "Internal"),
+                    row.get("Username", "unknown"),
+                    row.get("Process", ""),
+                    row.get("Host", ""),
+                    row.get("Message", ""),
+                    row.get("Raw_Line", ""),
+                ),
+            )
             count += 1
         self.conn.commit()
         return count
@@ -108,38 +111,55 @@ class SentinelDB:
     def update_enrichment(self, event_id: int, **fields):
         """Update enrichment/AI fields for an event."""
         allowed = {
-            "geo_country", "geo_city", "geo_lat", "geo_lon",
-            "ip_reputation", "asn", "mitre_technique", "mitre_tactic",
-            "anomaly_score", "cluster_id", "hmm_state",
-            "risk_score", "severity_level",
-            "session_id", "attack_chain_id", "tamper_flag"
+            "geo_country",
+            "geo_city",
+            "geo_lat",
+            "geo_lon",
+            "ip_reputation",
+            "asn",
+            "mitre_technique",
+            "mitre_tactic",
+            "anomaly_score",
+            "cluster_id",
+            "hmm_state",
+            "risk_score",
+            "severity_level",
+            "session_id",
+            "attack_chain_id",
+            "tamper_flag",
         }
         fields = {k: v for k, v in fields.items() if k in allowed}
         if not fields:
             return
         setters = ", ".join(f"{k} = ?" for k in fields)
         values = list(fields.values()) + [event_id]
-        self.conn.execute(
-            f"UPDATE events SET {setters} WHERE id = ?", values
-        )
+        self.conn.execute(f"UPDATE events SET {setters} WHERE id = ?", values)
         self.conn.commit()
 
     def bulk_update_by_ip(self, ip: str, **fields):
         """Update enrichment fields for all events from a given IP."""
         allowed = {
-            "geo_country", "geo_city", "geo_lat", "geo_lon",
-            "ip_reputation", "asn", "mitre_technique", "mitre_tactic",
-            "anomaly_score", "cluster_id", "hmm_state",
-            "risk_score", "severity_level", "attack_chain_id"
+            "geo_country",
+            "geo_city",
+            "geo_lat",
+            "geo_lon",
+            "ip_reputation",
+            "asn",
+            "mitre_technique",
+            "mitre_tactic",
+            "anomaly_score",
+            "cluster_id",
+            "hmm_state",
+            "risk_score",
+            "severity_level",
+            "attack_chain_id",
         }
         fields = {k: v for k, v in fields.items() if k in allowed}
         if not fields:
             return
         setters = ", ".join(f"{k} = ?" for k in fields)
         values = list(fields.values()) + [ip]
-        self.conn.execute(
-            f"UPDATE events SET {setters} WHERE ip_address = ?", values
-        )
+        self.conn.execute(f"UPDATE events SET {setters} WHERE ip_address = ?", values)
         self.conn.commit()
 
     def get_all_events(self) -> pd.DataFrame:
@@ -149,7 +169,8 @@ class SentinelDB:
     def get_events_by_ip(self, ip: str) -> pd.DataFrame:
         return pd.read_sql(
             "SELECT * FROM events WHERE ip_address = ? ORDER BY parsed_time",
-            self.conn, params=(ip,)
+            self.conn,
+            params=(ip,),
         )
 
     def get_unique_ips(self) -> list:
@@ -175,17 +196,24 @@ class SentinelDB:
             "SELECT COUNT(DISTINCT ip_address) FROM events WHERE ip_address != 'Internal'"
         ).fetchone()[0]
         return {
-            "total": total, "failed": failed, "success": success,
-            "critical": critical, "unique_ips": ips
+            "total": total,
+            "failed": failed,
+            "success": success,
+            "critical": critical,
+            "unique_ips": ips,
         }
 
-    def log_analysis_run(self, log_file: str, total: int, suspects: int,
-                         critical: int, config: str = ""):
-        self.conn.execute("""
+    def log_analysis_run(
+        self, log_file: str, total: int, suspects: int, critical: int, config: str = ""
+    ):
+        self.conn.execute(
+            """
             INSERT INTO analysis_runs (run_time, log_file, total_events,
                                        suspects, critical, config_json)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (datetime.now().isoformat(), log_file, total, suspects, critical, config))
+        """,
+            (datetime.now().isoformat(), log_file, total, suspects, critical, config),
+        )
         self.conn.commit()
 
     def clear_events(self):

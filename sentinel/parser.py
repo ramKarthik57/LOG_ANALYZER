@@ -6,35 +6,38 @@ a unified event schema for downstream AI/forensic analysis.
 """
 
 import re
-import pandas as pd
 from datetime import datetime
 
+import pandas as pd
 
 # ── Regex patterns for multiple log formats ──────────────────
 PATTERNS = {
     "auth_log": re.compile(
-        r'([A-Z][a-z]{2}\s+\d+\s\d{2}:\d{2}:\d{2})\s(\S+)\s(\S+?)[\[:\s](.*)'),
+        r"([A-Z][a-z]{2}\s+\d+\s\d{2}:\d{2}:\d{2})\s(\S+)\s(\S+?)[\[:\s](.*)"
+    ),
     "syslog": re.compile(
-        r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*)\s(\S+)\s(\S+?)[\[:\s](.*)'),
+        r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*)\s(\S+)\s(\S+?)[\[:\s](.*)"
+    ),
     "journald": re.compile(
-        r'([A-Z][a-z]{2}\s+\d+\s\d{2}:\d{2}:\d{2})\s(\S+)\s(\S+)\[(\d+)\]:\s(.*)'),
+        r"([A-Z][a-z]{2}\s+\d+\s\d{2}:\d{2}:\d{2})\s(\S+)\s(\S+)\[(\d+)\]:\s(.*)"
+    ),
 }
 
 # ── Event classification rules ───────────────────────────────
 EVENT_RULES = [
-    (re.compile(r'Failed password',    re.I), "FAILED_LOGIN"),
-    (re.compile(r'authentication failure', re.I), "FAILED_LOGIN"),
-    (re.compile(r'Accepted password',  re.I), "SUCCESSFUL_LOGIN"),
-    (re.compile(r'Accepted publickey', re.I), "SUCCESSFUL_LOGIN"),
-    (re.compile(r'session opened.*root', re.I), "ROOT_ACCESS"),
-    (re.compile(r'sudo:',             re.I), "SUDO_ATTEMPT"),
-    (re.compile(r'Invalid user',      re.I), "INVALID_USER"),
-    (re.compile(r'Connection closed',  re.I), "DISCONNECT"),
-    (re.compile(r'Disconnected from',  re.I), "DISCONNECT"),
+    (re.compile(r"Failed password", re.I), "FAILED_LOGIN"),
+    (re.compile(r"authentication failure", re.I), "FAILED_LOGIN"),
+    (re.compile(r"Accepted password", re.I), "SUCCESSFUL_LOGIN"),
+    (re.compile(r"Accepted publickey", re.I), "SUCCESSFUL_LOGIN"),
+    (re.compile(r"session opened.*root", re.I), "ROOT_ACCESS"),
+    (re.compile(r"sudo:", re.I), "SUDO_ATTEMPT"),
+    (re.compile(r"Invalid user", re.I), "INVALID_USER"),
+    (re.compile(r"Connection closed", re.I), "DISCONNECT"),
+    (re.compile(r"Disconnected from", re.I), "DISCONNECT"),
 ]
 
-IP_RE = re.compile(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})')
-USER_RE = re.compile(r'(?:for|user)\s+(\S+?)(?:\s|$)', re.I)
+IP_RE = re.compile(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
+USER_RE = re.compile(r"(?:for|user)\s+(\S+?)(?:\s|$)", re.I)
 
 
 def _classify_event(message: str) -> str:
@@ -72,7 +75,7 @@ def _detect_format(lines: list) -> str:
 def parse_log_file(filepath: str, year: str = "2024") -> pd.DataFrame:
     """
     Parse a log file into a unified event DataFrame.
-    
+
     Returns DataFrame with columns:
         Timestamp, Parsed_Time, Event, IP_Address, Username,
         Process, Host, Message, Raw_Line
@@ -102,7 +105,9 @@ def parse_log_file(filepath: str, year: str = "2024") -> pd.DataFrame:
         # Parse timestamp
         try:
             if fmt == "syslog":
-                parsed_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                parsed_time = datetime.fromisoformat(
+                    timestamp_str.replace("Z", "+00:00")
+                )
             else:
                 parsed_time = datetime.strptime(
                     f"{year} {timestamp_str}", "%Y %b %d %H:%M:%S"
@@ -114,18 +119,20 @@ def parse_log_file(filepath: str, year: str = "2024") -> pd.DataFrame:
         ip = _extract_ip(message)
         user = _extract_user(message)
 
-        rows.append({
-            "Line_Number": line_num,
-            "Timestamp": timestamp_str,
-            "Parsed_Time": parsed_time,
-            "Event": event_type,
-            "IP_Address": ip,
-            "Username": user,
-            "Process": process,
-            "Host": host,
-            "Message": message,
-            "Raw_Line": line,
-        })
+        rows.append(
+            {
+                "Line_Number": line_num,
+                "Timestamp": timestamp_str,
+                "Parsed_Time": parsed_time,
+                "Event": event_type,
+                "IP_Address": ip,
+                "Username": user,
+                "Process": process,
+                "Host": host,
+                "Message": message,
+                "Raw_Line": line,
+            }
+        )
 
     df = pd.DataFrame(rows)
     if not df.empty:

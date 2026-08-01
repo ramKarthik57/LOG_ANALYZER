@@ -9,7 +9,10 @@ import logging
 import time
 
 # Configure logging for SOAR actions
-logging.basicConfig(level=logging.INFO, format='[SOAR] %(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="[SOAR] %(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 class SOAREngine:
     """
@@ -31,39 +34,50 @@ class SOAREngine:
 
             if score >= self.block_threshold:
                 self._action_block_ip(ip, score)
-                
+
                 # Check for specific users involved (e.g., successful compromise)
                 factors = data.get("factors", {})
-                if "Compromise Pattern" in factors and factors["Compromise Pattern"][0] > 0:
-                     # Simulate finding the user tied to this IP from events
-                     # This is a simplified logic for the SOAR POC
-                     self._action_suspend_user("compromised_user", ip)
+                if (
+                    "Compromise Pattern" in factors
+                    and factors["Compromise Pattern"][0] > 0
+                ):
+                    # Simulate finding the user tied to this IP from events
+                    # This is a simplified logic for the SOAR POC
+                    self._action_suspend_user("compromised_user", ip)
 
     def _action_block_ip(self, ip: str, score: float):
         """Simulate a firewall rule update (WAF/IPS)."""
         if ip not in self.blocked_ips:
-            logging.warning(f"CRITICAL RISK (Score {score}): Pulsing block signal to Edge WAF for {ip}")
+            logging.warning(
+                f"CRITICAL RISK (Score {score}): Pulsing block signal to Edge WAF for {ip}"
+            )
             self.blocked_ips.add(ip)
-            self.history.append({
-                "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "ip": ip,
-                "action": "IP_BLOCK",
-                "target": "WAF / Cloudflare",
-                "status": "SUCCESS"
-            })
+            self.history.append(
+                {
+                    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "ip": ip,
+                    "action": "IP_BLOCK",
+                    "target": "WAF / Cloudflare",
+                    "status": "SUCCESS",
+                }
+            )
 
     def _action_suspend_user(self, username: str, ip: str):
         """Simulate an account lockout in Active Directory / LDAP."""
         if username not in self.suspended_users:
-            logging.critical(f"ACCOUNT SUSPENDED: Locking {username} due to high-risk activity from {ip}")
+            logging.critical(
+                f"ACCOUNT SUSPENDED: Locking {username} due to high-risk activity from {ip}"
+            )
             self.suspended_users.add(username)
-            self.history.append({
-                "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "user": username,
-                "action": "ACCOUNT_LOCKOUT",
-                "target": "Active Directory",
-                "status": "ENFORCED"
-            })
+            self.history.append(
+                {
+                    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "user": username,
+                    "action": "ACCOUNT_LOCKOUT",
+                    "target": "Active Directory",
+                    "status": "ENFORCED",
+                }
+            )
 
     def get_soar_logs(self):
         """Return history of automated actions for UI display."""

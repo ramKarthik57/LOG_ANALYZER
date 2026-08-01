@@ -5,25 +5,25 @@ Attack chain DAG reconstruction, entropy-based log tampering detection,
 session linking, and insider threat detection.
 """
 
+import random
+from collections import defaultdict
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-from collections import defaultdict
-import networkx as nx
-import random
-
 
 # ═════════════════════════════════════════════════════════════
 # 1. ATTACK CHAIN DAG RECONSTRUCTION
 # ═════════════════════════════════════════════════════════════
 # MITRE ATT&CK kill-chain phase mapping
 PHASE_MAP = {
-    "FAILED_LOGIN":      "RECONNAISSANCE",
-    "INVALID_USER":      "RECONNAISSANCE",
-    "SUCCESSFUL_LOGIN":  "INITIAL_ACCESS",
-    "ROOT_ACCESS":       "PRIVILEGE_ESCALATION",
-    "SUDO_ATTEMPT":      "PRIVILEGE_ESCALATION",
-    "DISCONNECT":        "DEFENSE_EVASION",
-    "OTHER":             "EXECUTION",
+    "FAILED_LOGIN": "RECONNAISSANCE",
+    "INVALID_USER": "RECONNAISSANCE",
+    "SUCCESSFUL_LOGIN": "INITIAL_ACCESS",
+    "ROOT_ACCESS": "PRIVILEGE_ESCALATION",
+    "SUDO_ATTEMPT": "PRIVILEGE_ESCALATION",
+    "DISCONNECT": "DEFENSE_EVASION",
+    "OTHER": "EXECUTION",
 }
 
 # Causal ordering of kill-chain phases
@@ -39,19 +39,19 @@ PHASE_ORDER = {
 
 # Valid causal transitions
 CAUSAL_RULES = {
-    "RECONNAISSANCE":       ["INITIAL_ACCESS"],
-    "INITIAL_ACCESS":       ["EXECUTION", "PERSISTENCE", "PRIVILEGE_ESCALATION"],
-    "EXECUTION":            ["PERSISTENCE", "PRIVILEGE_ESCALATION"],
-    "PERSISTENCE":          ["PRIVILEGE_ESCALATION", "LATERAL_MOVEMENT"],
+    "RECONNAISSANCE": ["INITIAL_ACCESS"],
+    "INITIAL_ACCESS": ["EXECUTION", "PERSISTENCE", "PRIVILEGE_ESCALATION"],
+    "EXECUTION": ["PERSISTENCE", "PRIVILEGE_ESCALATION"],
+    "PERSISTENCE": ["PRIVILEGE_ESCALATION", "LATERAL_MOVEMENT"],
     "PRIVILEGE_ESCALATION": ["DEFENSE_EVASION", "LATERAL_MOVEMENT"],
-    "DEFENSE_EVASION":      ["LATERAL_MOVEMENT"],
+    "DEFENSE_EVASION": ["LATERAL_MOVEMENT"],
 }
 
 
 def build_attack_chain(df: pd.DataFrame, ip: str) -> dict:
     """
     Build a DAG-based attack chain for a specific IP.
-    
+
     Returns:
         {
             "ip": str,
@@ -63,8 +63,13 @@ def build_attack_chain(df: pd.DataFrame, ip: str) -> dict:
     """
     ip_df = df[df.IP_Address == ip].sort_values("Parsed_Time")
     if ip_df.empty:
-        return {"ip": ip, "nodes": [], "edges": [], "phases_reached": [],
-                "kill_chain_progress": 0.0}
+        return {
+            "ip": ip,
+            "nodes": [],
+            "edges": [],
+            "phases_reached": [],
+            "kill_chain_progress": 0.0,
+        }
 
     nodes = []
     for i, (_, row) in enumerate(ip_df.iterrows()):
@@ -74,14 +79,16 @@ def build_attack_chain(df: pd.DataFrame, ip: str) -> dict:
         if row.Event == "SUCCESSFUL_LOGIN" and row.Parsed_Time.hour < 5:
             phase = "PERSISTENCE"
 
-        nodes.append({
-            "id": i,
-            "phase": phase,
-            "event": row.Event,
-            "time": str(row.Parsed_Time),
-            "details": row.Message[:80],
-            "username": row.get("Username", "unknown"),
-        })
+        nodes.append(
+            {
+                "id": i,
+                "phase": phase,
+                "event": row.Event,
+                "time": str(row.Parsed_Time),
+                "details": row.Message[:80],
+                "username": row.get("Username", "unknown"),
+            }
+        )
 
     # Build edges based on causal rules
     edges = []
@@ -96,7 +103,9 @@ def build_attack_chain(df: pd.DataFrame, ip: str) -> dict:
 
     # Compute kill-chain progress
     phases_reached = list(set(n["phase"] for n in nodes))
-    max_phase = max(PHASE_ORDER.get(p, 0) for p in phases_reached) if phases_reached else 0
+    max_phase = (
+        max(PHASE_ORDER.get(p, 0) for p in phases_reached) if phases_reached else 0
+    )
     progress = max_phase / max(len(PHASE_ORDER) - 1, 1)
 
     return {
@@ -108,8 +117,7 @@ def build_attack_chain(df: pd.DataFrame, ip: str) -> dict:
     }
 
 
-def build_all_attack_chains(df: pd.DataFrame,
-                            severity_map: dict = None) -> list:
+def build_all_attack_chains(df: pd.DataFrame, severity_map: dict = None) -> list:
     """
     Build attack chains for all HIGH/CRITICAL IPs.
     severity_map: {ip: severity_level_str}
@@ -118,8 +126,11 @@ def build_all_attack_chains(df: pd.DataFrame,
     target_ips = df.IP_Address.unique()
 
     if severity_map:
-        target_ips = [ip for ip in target_ips
-                      if severity_map.get(ip, "LOW") in ("HIGH", "CRITICAL")]
+        target_ips = [
+            ip
+            for ip in target_ips
+            if severity_map.get(ip, "LOW") in ("HIGH", "CRITICAL")
+        ]
 
     for ip in target_ips:
         chain = build_attack_chain(df, ip)
@@ -142,13 +153,12 @@ def _shannon_entropy(values: np.ndarray, n_bins: int = 20) -> float:
     return -np.sum(hist * np.log2(hist + 1e-12))
 
 
-def detect_log_tampering(df: pd.DataFrame,
-                         window_size: int = 50,
-                         stride: int = 10,
-                         z_threshold: float = 2.0) -> dict:
+def detect_log_tampering(
+    df: pd.DataFrame, window_size: int = 50, stride: int = 10, z_threshold: float = 2.0
+) -> dict:
     """
     Detect log tampering using Shannon entropy of inter-event time deltas.
-    
+
     Returns:
         {
             "tampered": bool,
@@ -158,21 +168,29 @@ def detect_log_tampering(df: pd.DataFrame,
         }
     """
     if len(df) < window_size * 2:
-        return {"tampered": False, "tamper_regions": [],
-                "baseline_entropy": 0.0, "entropy_series": []}
+        return {
+            "tampered": False,
+            "tamper_regions": [],
+            "baseline_entropy": 0.0,
+            "entropy_series": [],
+        }
 
     times = df["Parsed_Time"].sort_values()
     deltas = times.diff().dt.total_seconds().dropna().values
 
     if len(deltas) < window_size:
-        return {"tampered": False, "tamper_regions": [],
-                "baseline_entropy": 0.0, "entropy_series": []}
+        return {
+            "tampered": False,
+            "tamper_regions": [],
+            "baseline_entropy": 0.0,
+            "entropy_series": [],
+        }
 
     # Compute sliding-window entropy
     entropies = []
     centers = []
     for start in range(0, len(deltas) - window_size, stride):
-        window = deltas[start:start + window_size]
+        window = deltas[start : start + window_size]
         h = _shannon_entropy(window)
         entropies.append(h)
         centers.append(start + window_size // 2)
@@ -189,12 +207,14 @@ def detect_log_tampering(df: pd.DataFrame,
         else:
             z = 0.0
         if z > z_threshold:
-            tamper_regions.append((
-                max(0, center - window_size // 2),
-                min(len(df), center + window_size // 2),
-                round(h, 4),
-                round(z, 2),
-            ))
+            tamper_regions.append(
+                (
+                    max(0, center - window_size // 2),
+                    min(len(df), center + window_size // 2),
+                    round(h, 4),
+                    round(z, 2),
+                )
+            )
 
     return {
         "tampered": len(tamper_regions) > 0,
@@ -242,11 +262,10 @@ def link_sessions(df: pd.DataFrame, timeout_minutes: int = 30) -> pd.DataFrame:
 # ═════════════════════════════════════════════════════════════
 # 4. INSIDER THREAT DETECTION
 # ═════════════════════════════════════════════════════════════
-def detect_insider_threats(df: pd.DataFrame,
-                           user_profiles: dict) -> list:
+def detect_insider_threats(df: pd.DataFrame, user_profiles: dict) -> list:
     """
     Detect potential insider threats based on user behavior anomalies.
-    
+
     Indicators:
     - User in COMPROMISED state for prolonged periods
     - Successful logins from unusual IPs
@@ -273,8 +292,7 @@ def detect_insider_threats(df: pd.DataFrame,
 
         # Night activity
         night = user_df[
-            (user_df.Event == "SUCCESSFUL_LOGIN") &
-            (user_df.Parsed_Time.dt.hour < 5)
+            (user_df.Event == "SUCCESSFUL_LOGIN") & (user_df.Parsed_Time.dt.hour < 5)
         ]
         if not night.empty:
             indicators.append(f"{len(night)} night logins detected")
@@ -290,13 +308,15 @@ def detect_insider_threats(df: pd.DataFrame,
             indicators.append(f"{len(priv)} privilege escalation attempts")
 
         if len(indicators) >= 2 or risk > 0.3:
-            threats.append({
-                "username": user,
-                "risk_score": risk,
-                "current_state": current,
-                "indicators": indicators,
-                "event_count": len(user_df),
-            })
+            threats.append(
+                {
+                    "username": user,
+                    "risk_score": risk,
+                    "current_state": current,
+                    "indicators": indicators,
+                    "event_count": len(user_df),
+                }
+            )
 
     return sorted(threats, key=lambda t: t["risk_score"], reverse=True)
 
@@ -314,7 +334,7 @@ class GraphForensics:
         """Find high-risk edges that indicate host-to-host pivoting."""
         G = nx.Graph()
         success = df[df.Event == "SUCCESSFUL_LOGIN"]
-        
+
         for _, row in success.iterrows():
             u, ip, h = row.Username, row.IP_Address, row.get("Host", "UnkHost")
             G.add_edge(ip, h, user=u)
@@ -323,15 +343,14 @@ class GraphForensics:
         try:
             # IPs connected to multiple hosts are potential pivot points
             for node in G.nodes():
-                if "." in str(node): # It's an IP
+                if "." in str(node):  # It's an IP
                     neighbors = list(G.neighbors(node))
                     if len(neighbors) > 1:
-                        pivot_points.append({
-                            "ip": node,
-                            "hosts_involved": neighbors,
-                            "risk": "HIGH"
-                        })
-        except Exception: pass
+                        pivot_points.append(
+                            {"ip": node, "hosts_involved": neighbors, "risk": "HIGH"}
+                        )
+        except Exception:
+            pass
         return pivot_points
 
 
@@ -356,24 +375,26 @@ class ForensicNarrator:
         ip = ip_data.get("ip", "Unknown")
         level = ip_data.get("level", "LOW")
         score = ip_data.get("score", 0)
-        
+
         phases = chain.get("phases_reached", [])
         top_phase = chain.get("kill_chain_progress", 0) * 100
 
         summary = f"### [AGENT REPORT] Threat Analysis for {ip}\n\n"
         summary += f"Our neural engine classifies this entity as **{level}** (Confidence: {score}%).\n"
-        
+
         if "PRIVILEGE_ESCALATION" in phases:
             summary += f"- **Critical Alert**: The attacker successfully escalated privileges after initial access.\n"
         elif "INITIAL_ACCESS" in phases:
             summary += f"- **Warning**: Initial access was achieved. Monitoring for lateral movement.\n"
-        
+
         summary += f"- **Kill Chain Progress**: Entity has completed {top_phase:.0f}% of a standard attack cycle.\n"
-        
+
         # Add a "recommendation"
         if score > 40:
-             summary += "\n**RECO: [AUTONOMOUS]** Pulsing block to firewall. Isolate affected subnets."
+            summary += "\n**RECO: [AUTONOMOUS]** Pulsing block to firewall. Isolate affected subnets."
         else:
-             summary += "\n**RECO:** Continue passive observation. Flag for manual triage."
+            summary += (
+                "\n**RECO:** Continue passive observation. Flag for manual triage."
+            )
 
         return summary

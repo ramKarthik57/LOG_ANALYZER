@@ -22,15 +22,18 @@ class DynamicMLCalibrator:
     @staticmethod
     def tune_isolation_forest(n_samples: int) -> float:
         """Adaptive contamination factor (percentage of anomalies expected)."""
-        if n_samples < 5: return 0.20 # High uncertainty
-        if n_samples < 20: return 0.10
-        return 0.05 # Baseline for larger datasets
+        if n_samples < 5:
+            return 0.20  # High uncertainty
+        if n_samples < 20:
+            return 0.10
+        return 0.05  # Baseline for larger datasets
 
     @staticmethod
     def tune_dbscan(X: np.ndarray) -> tuple:
         """Adaptive Epsilon and Min_Samples based on feature dispersion."""
-        if len(X) < 2: return 1.0, 1
-        
+        if len(X) < 2:
+            return 1.0, 1
+
         # Heuristic: eps = fraction of the data spread
         spread = np.std(X, axis=0).mean() if len(X) > 1 else 1.0
         eps = max(0.5, spread * 0.8)
@@ -57,13 +60,13 @@ class IsolationForestDetector:
         features = []
         for ip in df.IP_Address.unique():
             ip_df = df[df.IP_Address == ip]
-            failed  = len(ip_df[ip_df.Event == "FAILED_LOGIN"])
+            failed = len(ip_df[ip_df.Event == "FAILED_LOGIN"])
             success = len(ip_df[ip_df.Event == "SUCCESSFUL_LOGIN"])
-            total   = len(ip_df)
+            total = len(ip_df)
 
             hours = ip_df.Parsed_Time.dt.hour
             hour_mean = hours.mean() if len(hours) > 0 else 12
-            hour_std  = hours.std()  if len(hours) > 1 else 0
+            hour_std = hours.std() if len(hours) > 1 else 0
 
             unique_users = ip_df.Username.nunique()
 
@@ -72,35 +75,43 @@ class IsolationForestDetector:
             if len(times) > 1:
                 deltas = times.diff().dt.total_seconds().dropna()
                 iet_mean = deltas.mean()
-                iet_std  = deltas.std()
-                iet_min  = deltas.min()
+                iet_std = deltas.std()
+                iet_min = deltas.min()
             else:
                 iet_mean = iet_std = iet_min = 0
 
-            night = len(ip_df[
-                (ip_df.Event == "SUCCESSFUL_LOGIN") &
-                (ip_df.Parsed_Time.dt.hour < 5)
-            ])
+            night = len(
+                ip_df[
+                    (ip_df.Event == "SUCCESSFUL_LOGIN")
+                    & (ip_df.Parsed_Time.dt.hour < 5)
+                ]
+            )
 
-            rep = ip_df["IP_Reputation"].iloc[0] if "IP_Reputation" in ip_df.columns else 0.5
+            rep = (
+                ip_df["IP_Reputation"].iloc[0]
+                if "IP_Reputation" in ip_df.columns
+                else 0.5
+            )
             geo_risk = ip_df["Geo_Risk"].iloc[0] if "Geo_Risk" in ip_df.columns else 0.3
 
-            features.append({
-                "IP_Address": ip,
-                "failed_count":   failed,
-                "success_count":  success,
-                "total_events":   total,
-                "hour_mean":      hour_mean,
-                "hour_std":       hour_std   if not np.isnan(hour_std)   else 0,
-                "unique_users":   unique_users,
-                "iet_mean":       iet_mean   if not np.isnan(iet_mean)   else 0,
-                "iet_std":        iet_std    if not np.isnan(iet_std)    else 0,
-                "iet_min":        iet_min    if not np.isnan(iet_min)    else 0,
-                "night_logins":   night,
-                "ip_reputation":  rep,
-                "geo_risk":       geo_risk,
-                "fail_ratio":     failed / max(total, 1),
-            })
+            features.append(
+                {
+                    "IP_Address": ip,
+                    "failed_count": failed,
+                    "success_count": success,
+                    "total_events": total,
+                    "hour_mean": hour_mean,
+                    "hour_std": hour_std if not np.isnan(hour_std) else 0,
+                    "unique_users": unique_users,
+                    "iet_mean": iet_mean if not np.isnan(iet_mean) else 0,
+                    "iet_std": iet_std if not np.isnan(iet_std) else 0,
+                    "iet_min": iet_min if not np.isnan(iet_min) else 0,
+                    "night_logins": night,
+                    "ip_reputation": rep,
+                    "geo_risk": geo_risk,
+                    "fail_ratio": failed / max(total, 1),
+                }
+            )
 
         return pd.DataFrame(features)
 
@@ -130,9 +141,7 @@ class IsolationForestDetector:
             contamination = DynamicMLCalibrator.tune_isolation_forest(n_samples)
 
             model = IsolationForest(
-                n_estimators=200,
-                contamination=contamination,
-                random_state=42
+                n_estimators=200, contamination=contamination, random_state=42
             )
             model.fit(X_scaled)
             self.model = model
@@ -141,7 +150,9 @@ class IsolationForestDetector:
             raw_scores = model.decision_function(X_scaled)
             # Normalize: lower decision_function = more anomalous
             if raw_scores.max() - raw_scores.min() > 0:
-                norm = 1.0 - (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min())
+                norm = 1.0 - (raw_scores - raw_scores.min()) / (
+                    raw_scores.max() - raw_scores.min()
+                )
             else:
                 norm = np.full_like(raw_scores, 0.5)
 
@@ -151,15 +162,23 @@ class IsolationForestDetector:
         except ImportError:
             # Fallback: heuristic scoring if sklearn not available
             feat_df["anomaly_score"] = feat_df.apply(
-                lambda r: min(1.0, (r.failed_count * 0.1 + r.night_logins * 0.2
-                               + r.geo_risk * 0.3 + (1 - r.ip_reputation) * 0.2)),
-                axis=1
+                lambda r: min(
+                    1.0,
+                    (
+                        r.failed_count * 0.1
+                        + r.night_logins * 0.2
+                        + r.geo_risk * 0.3
+                        + (1 - r.ip_reputation) * 0.2
+                    ),
+                ),
+                axis=1,
             ).round(4)
             feat_df["is_anomaly"] = feat_df.anomaly_score > 0.6
 
-        return feat_df[["IP_Address", "anomaly_score", "is_anomaly"] + [
-            c for c in feature_cols if c in feat_df.columns
-        ]]
+        return feat_df[
+            ["IP_Address", "anomaly_score", "is_anomaly"]
+            + [c for c in feature_cols if c in feat_df.columns]
+        ]
 
 
 # ═════════════════════════════════════════════════════════════
@@ -181,10 +200,18 @@ class IPClusterer:
             ip_features["cluster_label"] = "Lone Actor"
             return ip_features
 
-        numeric_cols = [c for c in ip_features.columns
-                        if c not in ("IP_Address", "is_anomaly",
-                                     "anomaly_score", "campaign_cluster",
-                                     "cluster_label")]
+        numeric_cols = [
+            c
+            for c in ip_features.columns
+            if c
+            not in (
+                "IP_Address",
+                "is_anomaly",
+                "anomaly_score",
+                "campaign_cluster",
+                "cluster_label",
+            )
+        ]
 
         X = ip_features[numeric_cols].values
 
@@ -193,10 +220,10 @@ class IPClusterer:
             from sklearn.preprocessing import StandardScaler
 
             X_scaled = StandardScaler().fit_transform(X)
-            
+
             # ── Dynamic Tuning ──
             eps, min_s = DynamicMLCalibrator.tune_dbscan(X_scaled)
-            
+
             db = DBSCAN(eps=eps, min_samples=min_s)
             labels = db.fit_predict(X_scaled)
 
@@ -225,18 +252,22 @@ class UserBehaviorHMM:
     STATES = ["NORMAL", "ELEVATED", "COMPROMISED"]
 
     # Transition matrix A[i][j] = P(next=j | current=i)
-    A = np.array([
-        [0.90, 0.08, 0.02],   # NORMAL
-        [0.20, 0.60, 0.20],   # ELEVATED
-        [0.05, 0.15, 0.80],   # COMPROMISED
-    ])
+    A = np.array(
+        [
+            [0.90, 0.08, 0.02],  # NORMAL
+            [0.20, 0.60, 0.20],  # ELEVATED
+            [0.05, 0.15, 0.80],  # COMPROMISED
+        ]
+    )
 
     # Emission matrix B[state][observation]
-    B = np.array([
-        [0.70, 0.05, 0.05, 0.10, 0.10],   # NORMAL
-        [0.30, 0.25, 0.15, 0.20, 0.10],   # ELEVATED
-        [0.10, 0.30, 0.25, 0.25, 0.10],   # COMPROMISED
-    ])
+    B = np.array(
+        [
+            [0.70, 0.05, 0.05, 0.10, 0.10],  # NORMAL
+            [0.30, 0.25, 0.15, 0.20, 0.10],  # ELEVATED
+            [0.10, 0.30, 0.25, 0.25, 0.10],  # COMPROMISED
+        ]
+    )
 
     # Initial state probabilities
     PI = np.array([0.85, 0.10, 0.05])
@@ -282,8 +313,11 @@ class UserBehaviorHMM:
 
         for t in range(1, T):
             for j in range(n_states):
-                probs = dp[t-1] + np.log(self.A[:, j] + 1e-10) + \
-                        np.log(self.B[j, observations[t]] + 1e-10)
+                probs = (
+                    dp[t - 1]
+                    + np.log(self.A[:, j] + 1e-10)
+                    + np.log(self.B[j, observations[t]] + 1e-10)
+                )
                 dp[t, j] = np.max(probs)
                 path[t, j] = np.argmax(probs)
 
@@ -321,7 +355,9 @@ class UserBehaviorHMM:
             # Risk = fraction of time in ELEVATED/COMPROMISED
             elevated = sum(1 for s in state_seq if s == "ELEVATED")
             compromised = sum(1 for s in state_seq if s == "COMPROMISED")
-            risk = round((elevated * 0.3 + compromised * 0.7) / max(len(state_seq), 1), 3)
+            risk = round(
+                (elevated * 0.3 + compromised * 0.7) / max(len(state_seq), 1), 3
+            )
 
             results[user] = {
                 "states": state_seq,

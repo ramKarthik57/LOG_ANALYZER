@@ -56,19 +56,26 @@ class AdaptiveDetector:
 
         # Confidence: how many standard deviations above mean
         per_ip["Confidence"] = per_ip.Failed_Count.apply(
-            lambda x: round(min(
-                1.0 - sp_stats.norm.sf(x, self._baseline_mu, self._baseline_sigma),
-                0.999
-            ), 3) if self._baseline_sigma > 0 else 0.5
+            lambda x: (
+                round(
+                    min(
+                        1.0
+                        - sp_stats.norm.sf(x, self._baseline_mu, self._baseline_sigma),
+                        0.999,
+                    ),
+                    3,
+                )
+                if self._baseline_sigma > 0
+                else 0.5
+            )
         )
 
         return per_ip
 
     def detect_night_logins(self, df: pd.DataFrame) -> pd.DataFrame:
         """Detect successful logins during suspicious hours."""
-        mask = (
-            (df.Event == "SUCCESSFUL_LOGIN") &
-            (df.Parsed_Time.dt.hour < self.night_end)
+        mask = (df.Event == "SUCCESSFUL_LOGIN") & (
+            df.Parsed_Time.dt.hour < self.night_end
         )
         return df[mask].copy()
 
@@ -79,17 +86,20 @@ class AdaptiveDetector:
         """
         failed = df[df.Event == "FAILED_LOGIN"]
         if failed.empty:
-            return pd.DataFrame(columns=["IP_Address", "Unique_Users",
-                                          "Total_Attempts", "Spray_Ratio"])
+            return pd.DataFrame(
+                columns=["IP_Address", "Unique_Users", "Total_Attempts", "Spray_Ratio"]
+            )
 
-        per_ip = failed.groupby("IP_Address").agg(
-            Unique_Users=("Username", "nunique"),
-            Total_Attempts=("Username", "count"),
-        ).reset_index()
+        per_ip = (
+            failed.groupby("IP_Address")
+            .agg(
+                Unique_Users=("Username", "nunique"),
+                Total_Attempts=("Username", "count"),
+            )
+            .reset_index()
+        )
 
-        per_ip["Spray_Ratio"] = (
-            per_ip.Unique_Users / per_ip.Total_Attempts
-        ).round(3)
+        per_ip["Spray_Ratio"] = (per_ip.Unique_Users / per_ip.Total_Attempts).round(3)
 
         # High spray ratio = credential stuffing (many users, few attempts each)
         per_ip["Is_Stuffing"] = (per_ip.Spray_Ratio > 0.5) & (per_ip.Unique_Users > 2)
@@ -111,17 +121,21 @@ class AdaptiveDetector:
             if fails >= threshold and successes > 0:
                 # Check temporal ordering: fails before success
                 first_fail = ip_df[ip_df.Event == "FAILED_LOGIN"].iloc[0].Parsed_Time
-                last_success = ip_df[ip_df.Event == "SUCCESSFUL_LOGIN"].iloc[-1].Parsed_Time
+                last_success = (
+                    ip_df[ip_df.Event == "SUCCESSFUL_LOGIN"].iloc[-1].Parsed_Time
+                )
 
                 if first_fail < last_success:
-                    results.append({
-                        "IP_Address": ip,
-                        "Failed_Count": fails,
-                        "Success_Count": successes,
-                        "First_Fail": first_fail,
-                        "Last_Success": last_success,
-                        "Pattern": "FAILED → SUCCESS (Compromise Likely)"
-                    })
+                    results.append(
+                        {
+                            "IP_Address": ip,
+                            "Failed_Count": fails,
+                            "Success_Count": successes,
+                            "First_Fail": first_fail,
+                            "Last_Success": last_success,
+                            "Pattern": "FAILED → SUCCESS (Compromise Likely)",
+                        }
+                    )
 
         return pd.DataFrame(results)
 
@@ -130,10 +144,14 @@ class AdaptiveDetector:
         if "Host" not in df.columns:
             return pd.DataFrame()
 
-        per_ip = df.groupby("IP_Address").agg(
-            Hosts_Accessed=("Host", "nunique"),
-            Total_Events=("Event", "count"),
-        ).reset_index()
+        per_ip = (
+            df.groupby("IP_Address")
+            .agg(
+                Hosts_Accessed=("Host", "nunique"),
+                Total_Events=("Event", "count"),
+            )
+            .reset_index()
+        )
 
         per_ip["Is_Lateral"] = per_ip.Hosts_Accessed > 1
         return per_ip[per_ip.Is_Lateral]

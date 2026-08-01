@@ -5,28 +5,48 @@ Generates synthetic auth.log entries with configurable attack patterns
 for testing and demonstrating detection capabilities.
 """
 
-import random
 import os
+import random
 from datetime import datetime, timedelta
-
 
 # ── Realistic syslog names / IPs ─────────────────────────────
 _USERNAMES = [
-    "root", "admin", "user", "test", "deploy", "ubuntu",
-    "jenkins", "postgres", "mysql", "www-data", "ftpuser",
-    "oracle", "nagios", "backup", "git",
+    "root",
+    "admin",
+    "user",
+    "test",
+    "deploy",
+    "ubuntu",
+    "jenkins",
+    "postgres",
+    "mysql",
+    "www-data",
+    "ftpuser",
+    "oracle",
+    "nagios",
+    "backup",
+    "git",
 ]
 
 _ATTACKER_IPS = [
-    "185.220.101.34", "45.33.32.156", "103.91.64.22",
-    "91.240.118.172", "186.233.186.4", "112.85.42.87",
-    "193.35.18.33", "62.210.105.116", "218.92.0.190",
+    "185.220.101.34",
+    "45.33.32.156",
+    "103.91.64.22",
+    "91.240.118.172",
+    "186.233.186.4",
+    "112.85.42.87",
+    "193.35.18.33",
+    "62.210.105.116",
+    "218.92.0.190",
     "141.98.10.37",
 ]
 
 _INTERNAL_IPS = [
-    "10.0.0.5", "10.0.0.12", "192.168.1.101",
-    "192.168.1.55", "10.0.1.200",
+    "10.0.0.5",
+    "10.0.0.12",
+    "192.168.1.101",
+    "192.168.1.55",
+    "10.0.1.200",
 ]
 
 _HOSTS = ["server01", "web-prod", "db-primary", "auth-gateway"]
@@ -43,56 +63,69 @@ def _syslog_timestamp(dt: datetime) -> str:
 
 def _gen_failed(dt: datetime, ip: str, user: str, host: str) -> str:
     pid = random.randint(1000, 65000)
-    return (f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
-            f"Failed password for {user} from {ip} port "
-            f"{random.randint(30000, 65000)} ssh2")
+    return (
+        f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
+        f"Failed password for {user} from {ip} port "
+        f"{random.randint(30000, 65000)} ssh2"
+    )
 
 
 def _gen_success(dt: datetime, ip: str, user: str, host: str) -> str:
     pid = random.randint(1000, 65000)
-    return (f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
-            f"Accepted password for {user} from {ip} port "
-            f"{random.randint(30000, 65000)} ssh2")
+    return (
+        f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
+        f"Accepted password for {user} from {ip} port "
+        f"{random.randint(30000, 65000)} ssh2"
+    )
 
 
 def _gen_invalid_user(dt: datetime, ip: str, user: str, host: str) -> str:
     pid = random.randint(1000, 65000)
-    return (f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
-            f"Invalid user {user} from {ip} port "
-            f"{random.randint(30000, 65000)}")
+    return (
+        f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
+        f"Invalid user {user} from {ip} port "
+        f"{random.randint(30000, 65000)}"
+    )
 
 
 def _gen_disconnect(dt: datetime, ip: str, host: str) -> str:
     pid = random.randint(1000, 65000)
-    return (f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
-            f"Disconnected from {ip} port {random.randint(30000, 65000)}")
+    return (
+        f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
+        f"Disconnected from {ip} port {random.randint(30000, 65000)}"
+    )
 
 
 def _gen_sudo(dt: datetime, user: str, host: str) -> str:
-    return (f"{_syslog_timestamp(dt)} {host} sudo: "
-            f"{user} : TTY=pts/0 ; PWD=/home/{user} ; "
-            f"USER=root ; COMMAND=/bin/bash")
+    return (
+        f"{_syslog_timestamp(dt)} {host} sudo: "
+        f"{user} : TTY=pts/0 ; PWD=/home/{user} ; "
+        f"USER=root ; COMMAND=/bin/bash"
+    )
 
 
 def _gen_session_open(dt: datetime, user: str, host: str) -> str:
     pid = random.randint(1000, 65000)
-    return (f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
-            f"pam_unix(sshd:session): session opened for user {user}")
+    return (
+        f"{_syslog_timestamp(dt)} {host} sshd[{pid}]: "
+        f"pam_unix(sshd:session): session opened for user {user}"
+    )
 
 
 # ═════════════════════════════════════════════════════════════
 # ATTACK PATTERN GENERATORS
 # ═════════════════════════════════════════════════════════════
 
-def generate_normal_traffic(start: datetime, duration_hours: int = 24,
-                            events_per_hour: int = 5) -> list:
+
+def generate_normal_traffic(
+    start: datetime, duration_hours: int = 24, events_per_hour: int = 5
+) -> list:
     """Generate realistic normal authentication traffic."""
     lines = []
     current = start
 
     for _ in range(duration_hours):
-        n_events = random.randint(max(1, events_per_hour - 2),
-                                  events_per_hour + 3)
+        n_events = random.randint(max(1, events_per_hour - 2), events_per_hour + 3)
         for _ in range(n_events):
             dt = current + timedelta(seconds=random.randint(0, 3599))
             ip = random.choice(_INTERNAL_IPS)
@@ -112,10 +145,13 @@ def generate_normal_traffic(start: datetime, duration_hours: int = 24,
     return lines
 
 
-def generate_bruteforce_attack(start: datetime, attacker_ip: str = None,
-                               attempts: int = 50,
-                               duration_minutes: int = 10,
-                               success_at_end: bool = True) -> list:
+def generate_bruteforce_attack(
+    start: datetime,
+    attacker_ip: str = None,
+    attempts: int = 50,
+    duration_minutes: int = 10,
+    success_at_end: bool = True,
+) -> list:
     """Generate a brute-force attack: many failed then optional success."""
     lines = []
     ip = attacker_ip or random.choice(_ATTACKER_IPS)
@@ -138,9 +174,9 @@ def generate_bruteforce_attack(start: datetime, attacker_ip: str = None,
     return lines
 
 
-def generate_credential_stuffing(start: datetime,
-                                 n_ips: int = 8,
-                                 attempts_per_ip: int = 5) -> list:
+def generate_credential_stuffing(
+    start: datetime, n_ips: int = 8, attempts_per_ip: int = 5
+) -> list:
     """Generate distributed credential stuffing: many IPs, few attempts each."""
     lines = []
     host = random.choice(_HOSTS)
@@ -156,8 +192,7 @@ def generate_credential_stuffing(start: datetime,
     return lines
 
 
-def generate_night_intrusion(start_hour: int = 2,
-                             base_date: datetime = None) -> list:
+def generate_night_intrusion(start_hour: int = 2, base_date: datetime = None) -> list:
     """Generate a suspicious night-time login pattern."""
     lines = []
     if base_date is None:
@@ -177,8 +212,7 @@ def generate_night_intrusion(start_hour: int = 2,
     return lines
 
 
-def generate_lateral_movement(start: datetime,
-                              initial_ip: str = None) -> list:
+def generate_lateral_movement(start: datetime, initial_ip: str = None) -> list:
     """Generate lateral movement: access multiple hosts after initial breach."""
     lines = []
     ip = initial_ip or random.choice(_ATTACKER_IPS)
@@ -197,45 +231,62 @@ def generate_lateral_movement(start: datetime,
 # FULL SIMULATION
 # ═════════════════════════════════════════════════════════════
 
-def generate_full_simulation(output_path: str = None,
-                             year: str = "2024") -> str:
+
+def generate_full_simulation(output_path: str = None, year: str = "2024") -> str:
     """
     Generate a complete simulated auth.log file with mixed
     normal traffic and various attack patterns.
     Returns path to the generated file.
     """
     if output_path is None:
-        output_path = os.path.join(os.path.dirname(__file__), "..",
-                                   "simulated_auth.log")
+        output_path = os.path.join(
+            os.path.dirname(__file__), "..", "simulated_auth.log"
+        )
     output_path = os.path.abspath(output_path)
 
     base = datetime(int(year), 6, 15, 0, 0, 0)
     all_lines = []
 
     # 1. Normal traffic (48 hours)
-    all_lines.extend(generate_normal_traffic(base, duration_hours=48,
-                                             events_per_hour=8))
+    all_lines.extend(
+        generate_normal_traffic(base, duration_hours=48, events_per_hour=8)
+    )
 
     # 2. Brute force attack #1 (day 1, 14:00)
-    all_lines.extend(generate_bruteforce_attack(
-        base + timedelta(hours=14), attempts=40, success_at_end=True))
+    all_lines.extend(
+        generate_bruteforce_attack(
+            base + timedelta(hours=14), attempts=40, success_at_end=True
+        )
+    )
 
     # 3. Brute force attack #2 (day 1, 22:00)
-    all_lines.extend(generate_bruteforce_attack(
-        base + timedelta(hours=22),
-        attacker_ip="91.240.118.172", attempts=25, success_at_end=False))
+    all_lines.extend(
+        generate_bruteforce_attack(
+            base + timedelta(hours=22),
+            attacker_ip="91.240.118.172",
+            attempts=25,
+            success_at_end=False,
+        )
+    )
 
     # 4. Credential stuffing (day 2, 06:00)
-    all_lines.extend(generate_credential_stuffing(
-        base + timedelta(hours=30), n_ips=6, attempts_per_ip=4))
+    all_lines.extend(
+        generate_credential_stuffing(
+            base + timedelta(hours=30), n_ips=6, attempts_per_ip=4
+        )
+    )
 
     # 5. Night intrusion (day 2, 02:30)
-    all_lines.extend(generate_night_intrusion(
-        start_hour=2, base_date=base + timedelta(days=1)))
+    all_lines.extend(
+        generate_night_intrusion(start_hour=2, base_date=base + timedelta(days=1))
+    )
 
     # 6. Lateral movement (day 2, 10:00)
-    all_lines.extend(generate_lateral_movement(
-        base + timedelta(hours=34), initial_ip="185.220.101.34"))
+    all_lines.extend(
+        generate_lateral_movement(
+            base + timedelta(hours=34), initial_ip="185.220.101.34"
+        )
+    )
 
     # 7. Deception: Honey-token attempts
     for _ in range(3):
